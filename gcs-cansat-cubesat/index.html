@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CanSat & CubeSat Ground Control Software - Professional aerospace-grade telemetry dashboard">
+    <meta name="author" content="Aerospace Engineering Team">
+    <title>GCS | CanSat & CubeSat Ground Control</title>
+
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Boot Splash -->
+    <div id="bootSplash" class="boot-splash">
+        <div class="boot-content">
+            <div class="boot-logo">
+                <svg viewBox="0 0 100 100" width="80" height="80">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#00E5FF" stroke-width="2"/>
+                    <circle cx="50" cy="50" r="30" fill="none" stroke="#00E5FF" stroke-width="1" opacity="0.6"/>
+                    <circle cx="50" cy="50" r="15" fill="none" stroke="#00E5FF" stroke-width="1" opacity="0.3"/>
+                    <path d="M50 5 L50 95 M5 50 L95 50" stroke="#00E5FF" stroke-width="1" opacity="0.4"/>
+                    <circle cx="50" cy="50" r="4" fill="#00E5FF"/>
+                </svg>
+            </div>
+            <h1 class="boot-title">GROUND CONTROL SYSTEM</h1>
+            <p class="boot-subtitle">Initializing Aerospace Telemetry Suite...</p>
+            <div class="boot-progress"><div class="boot-progress-bar"></div></div>
+            <p class="boot-status" id="bootStatus">Loading modules...</p>
+        </div>
+    </div>
+
+    <!-- Top Bar -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="logo">
+                <svg viewBox="0 0 40 40" width="36" height="36">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="#00E5FF" stroke-width="1.5"/>
+                    <circle cx="20" cy="20" r="12" fill="none" stroke="#00E5FF" stroke-width="1" opacity="0.6"/>
+                    <path d="M20 2 L20 38 M2 20 L38 20" stroke="#00E5FF" stroke-width="0.8" opacity="0.5"/>
+                    <circle cx="20" cy="20" r="3" fill="#00E5FF"/>
+                    <circle cx="34" cy="20" r="2" fill="#00FF88"/>
+                </svg>
+                <div class="logo-text">
+                    <span class="logo-title">GCS</span>
+                    <span class="logo-sub">Ground Control</span>
+                </div>
+            </div>
+
+            <div class="mission-selector">
+                <button class="mission-btn active" data-mission="cansat" id="btnCanSat">
+                    <span class="mission-icon">🛸</span> CanSat
+                </button>
+                <button class="mission-btn" data-mission="cubesat" id="btnCubeSat">
+                    <span class="mission-icon">🛰️</span> CubeSat
+                </button>
+            </div>
+        </div>
+
+        <div class="topbar-center">
+            <div class="tb-info">
+                <span class="tb-label">MISSION TIME</span>
+                <span class="tb-value" id="missionTime">00:00:00</span>
+            </div>
+            <div class="tb-info">
+                <span class="tb-label">DATE</span>
+                <span class="tb-value" id="currentDate">--/--/----</span>
+            </div>
+            <div class="tb-info">
+                <span class="tb-label">ELAPSED</span>
+                <span class="tb-value" id="elapsedTime">00:00:00</span>
+            </div>
+            <div class="tb-info">
+                <span class="tb-label">TELEMETRY</span>
+                <span class="tb-value tb-status" id="telemetryStatus"><span class="dot dot-red"></span>OFFLINE</span>
+            </div>
+            <div class="tb-info">
+                <span class="tb-label">STATUS</span>
+                <span class="tb-value tb-status" id="missionStatus"><span class="dot dot-yellow"></span>STANDBY</span>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <button class="btn btn-success" id="btnStart" title="Start Telemetry">▶ START</button>
+            <button class="btn btn-danger" id="btnStop" title="Stop Telemetry">■ STOP</button>
+            <button class="btn btn-secondary" id="btnCSV" title="Export CSV">📥 CSV</button>
+            <button class="btn btn-secondary" id="btnExportGraph" title="Export Graph">📊 GRAPH</button>
+            <button class="btn btn-secondary" id="btnSyncTime" title="Sync PC Time">⟳ SYNC</button>
+            <button class="btn btn-secondary" id="btnReset" title="Reset Packets">↺ RESET</button>
+            <button class="btn btn-icon" id="btnTheme" title="Theme Toggle">🌙</button>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="dashboard">
+
+        <!-- Left Column: Telemetry -->
+        <section class="panel panel-telemetry">
+            <div class="panel-header">
+                <h2>📡 <span id="telemetryTitle">CANSAT TELEMETRY</span></h2>
+                <span class="panel-badge" id="packetBadge">PKT 0</span>
+            </div>
+            <div class="panel-body scroll-y" id="telemetryGrid">
+                <!-- Telemetry cards injected by JS -->
+            </div>
+        </section>
+
+        <!-- Center Column -->
+        <section class="center-column">
+
+            <!-- Charts Section -->
+            <div class="panel panel-charts">
+                <div class="panel-header">
+                    <h2>📈 REAL-TIME TELEMETRY GRAPHS</h2>
+                    <div class="chart-tabs" id="chartTabs">
+                        <!-- Tabs injected by JS -->
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-grid" id="chartGrid">
+                        <div class="chart-card"><canvas id="chartAltitude"></canvas></div>
+                        <div class="chart-card"><canvas id="chartTemperature"></canvas></div>
+                        <div class="chart-card"><canvas id="chartPressure"></canvas></div>
+                        <div class="chart-card"><canvas id="chartBattery"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map + 3D Row -->
+            <div class="dual-row">
+                <div class="panel panel-map">
+                    <div class="panel-header">
+                        <h2>🗺️ <span id="mapTitle">GPS TRACKING</span></h2>
+                        <span class="panel-badge" id="coordBadge">0.0000, 0.0000</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <div class="panel panel-3d">
+                    <div class="panel-header">
+                        <h2>🧭 ATTITUDE & ORIENTATION</h2>
+                        <span class="panel-badge" id="attitudeBadge">P:0° R:0° Y:0°</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="threeContainer"></div>
+                        <div class="artificial-horizon">
+                            <div class="ah-container">
+                                <div class="ah-inner" id="ahInner">
+                                    <div class="ah-sky"></div>
+                                    <div class="ah-ground"></div>
+                                    <div class="ah-horizon"></div>
+                                </div>
+                                <div class="ah-plane">
+                                    <div class="ah-wing-left"></div>
+                                    <div class="ah-center"></div>
+                                    <div class="ah-wing-right"></div>
+                                </div>
+                                <div class="ah-marker ah-marker-top">0</div>
+                            </div>
+                            <div class="ah-readouts">
+                                <div><span>PITCH</span><b id="ahPitch">0°</b></div>
+                                <div><span>ROLL</span><b id="ahRoll">0°</b></div>
+                                <div><span>YAW</span><b id="ahYaw">0°</b></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera + Logs Row -->
+            <div class="dual-row">
+                <div class="panel panel-camera">
+                    <div class="panel-header">
+                        <h2>📹 LIVE CAMERA FEED</h2>
+                        <span class="panel-badge" id="cameraBadge"><span class="dot dot-red"></span>OFFLINE</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="camera-wrap">
+                            <video id="cameraVideo" autoplay playsinline muted></video>
+                            <div class="camera-overlay" id="cameraOverlay">
+                                <div class="camera-crosshair">
+                                    <div class="ch-h"></div><div class="ch-v"></div>
+                                    <div class="ch-ring"></div>
+                                </div>
+                                <div class="camera-hud">
+                                    <span>REC ●</span>
+                                    <span id="cameraTime">00:00:00</span>
+                                </div>
+                            </div>
+                            <div class="camera-placeholder" id="cameraPlaceholder">
+                                <div class="cp-icon">📷</div>
+                                <div>CAMERA OFFLINE</div>
+                                <small>Click START CAMERA to begin</small>
+                            </div>
+                        </div>
+                        <div class="camera-controls">
+                            <button class="btn btn-success" id="btnCameraStart">▶ START CAMERA</button>
+                            <button class="btn btn-danger" id="btnCameraStop">■ STOP CAMERA</button>
+                            <button class="btn btn-secondary" id="btnCameraFull">⛶ FULLSCREEN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-logs">
+                    <div class="panel-header">
+                        <h2>📋 MISSION LOGS</h2>
+                        <button class="btn btn-icon-sm" id="btnClearLogs">🗑</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="log-container" id="logContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Controls -->
+        <aside class="panel panel-controls">
+            <div class="panel-header">
+                <h2>🎛️ MISSION CONTROL</h2>
+            </div>
+            <div class="panel-body scroll-y">
+
+                <div class="control-group">
+                    <h3>ERROR CODES</h3>
+                    <div class="error-code-display">
+                        <div class="ec-digit" id="ec1" title="Descent Rate">0</div>
+                        <div class="ec-digit" id="ec2" title="GPS">0</div>
+                        <div class="ec-digit" id="ec3" title="Payload Separation">0</div>
+                        <div class="ec-digit" id="ec4" title="Emergency Parachute">0</div>
+                    </div>
+                    <div class="ec-legend">
+                        <div><span class="ec-key">D1</span> Descent Rate</div>
+                        <div><span class="ec-key">D2</span> GPS</div>
+                        <div><span class="ec-key">D3</span> Payload Sep.</div>
+                        <div><span class="ec-key">D4</span> Parachute</div>
+                    </div>
+                    <div class="ec-samples">
+                        <button data-code="0000" class="ec-sample">0000</button>
+                        <button data-code="1000" class="ec-sample">1000</button>
+                        <button data-code="0100" class="ec-sample">0100</button>
+                        <button data-code="0010" class="ec-sample">0010</button>
+                        <button data-code="0001" class="ec-sample">0001</button>
+                        <button data-code="1111" class="ec-sample">1111</button>
+                    </div>
+                </div>
+
+                <div class="control-group" id="cansatControls">
+                    <h3>CANSAT COMMANDS</h3>
+                    <button class="cmd-btn" data-cmd="manual_sep">🔧 Manual Separation</button>
+                    <button class="cmd-btn" data-cmd="parachute">🪂 Emergency Parachute</button>
+                    <button class="cmd-btn" data-cmd="payload">📦 Activate Payload</button>
+                    <button class="cmd-btn" data-cmd="reset_mission">↺ Reset Mission</button>
+                    <button class="cmd-btn cmd-danger" data-cmd="emergency_stop">⛔ Emergency Stop</button>
+                </div>
+
+                <div class="control-group hidden" id="cubesatControls">
+                    <h3>CUBESAT COMMANDS</h3>
+                    <button class="cmd-btn" data-cmd="safe_mode">🛡 Safe Mode</button>
+                    <button class="cmd-btn" data-cmd="deploy_solar">☀ Deploy Solar Panels</button>
+                    <button class="cmd-btn" data-cmd="enable_payload">📦 Enable Payload</button>
+                    <button class="cmd-btn" data-cmd="attitude_control">🎯 Attitude Control</button>
+                    <button class="cmd-btn" data-cmd="comm_reset">📡 Communication Reset</button>
+                    <button class="cmd-btn cmd-danger" data-cmd="emergency_stop">⛔ Emergency Stop</button>
+                </div>
+
+                <div class="control-group">
+                    <h3>SERIAL CONNECTION</h3>
+                    <button class="cmd-btn" id="btnSerialConnect">🔌 Connect Serial</button>
+                    <button class="cmd-btn" id="btnSerialDisconnect">✖ Disconnect</button>
+                    <div class="serial-status" id="serialStatus">
+                        <span class="dot dot-red"></span> Disconnected
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>SIMULATION MODE</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="simToggle" checked>
+                        <span class="slider"></span>
+                        <span class="switch-label">Simulation Enabled</span>
+                    </label>
+                    <div class="sim-info">
+                        Generates realistic telemetry every 1s. Toggle off when using real hardware via Web Serial.
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>COMMAND STATUS</h3>
+                    <div class="cmd-status" id="cmdStatus">
+                        <div class="cs-empty">No commands executed</div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div>© 2026 GCS Ground Control · Aerospace Telemetry Suite v2.0</div>
+        <div class="footer-right">
+            <span>Packets: <b id="footerPackets">0</b></span>
+            <span>Uplink: <b id="footerUplink">0 kbps</b></span>
+            <span>Downlink: <b id="footerDownlink">0 kbps</b></span>
+            <span>Mode: <b id="footerMode">SIMULATION</b></span>
+        </div>
+    </footer>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <!-- Main Script -->
+    <script src="script.js"></script>
+</body>
+</html>
