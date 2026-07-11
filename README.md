@@ -1,1 +1,0 @@
-# CanSat-CubeSat-Ground-Control-System-Software
